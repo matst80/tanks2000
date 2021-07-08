@@ -64,6 +64,9 @@ export class KeyboardInput extends Input {
         super.step()
 
         this.objectToMove.motion *= 0.97;
+        if (this.buttonsDown[KEY_SPACE]) {
+            this.objectToMove.fire();
+        }
         if (this.buttonsDown[this.movementKeys[0]]) {
             this.objectToMove.motion = -1.0;
         } else if (this.buttonsDown[this.movementKeys[1]]) {

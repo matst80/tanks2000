@@ -20,67 +20,70 @@ export class Player {
     wheelJoint2;
     motion;
     cannonMotion;
+    world;
+    lastFire;
 
     constructor(world, pos) {
+        this.world = world;
         this.motion = 0;
         this.cannonMotion = 0;
+        this.lastFire = 0;
 
-        
-        
-            var carVerts = [
-                new Box2D.b2Vec2(-1.5, -0.5),
-                new Box2D.b2Vec2(1.5, -0.5),
-                new Box2D.b2Vec2(1.5, 0.5),
-                new Box2D.b2Vec2(1.2, 0.9),
-                new Box2D.b2Vec2(-1.2, 0.9),
-                new Box2D.b2Vec2(-1.5, 0.5)];
-            var chassisShape = new createPolygonShape(carVerts);
 
-            var circleShape = new Box2D.b2CircleShape();
-            circleShape.set_m_radius(0.6);
+        var carVerts = [
+            new Box2D.b2Vec2(-1.5, -0.5),
+            new Box2D.b2Vec2(1.5, -0.5),
+            new Box2D.b2Vec2(1.5, 0.5),
+            new Box2D.b2Vec2(1.2, 0.9),
+            new Box2D.b2Vec2(-1.2, 0.9),
+            new Box2D.b2Vec2(-1.5, 0.5)];
+        var chassisShape = new createPolygonShape(carVerts);
 
-            var bd = new Box2D.b2BodyDef();
-            // bd.set_type(b2_dynamicBody);
-            bd.set_type(Module.b2_dynamicBody);
-            bd.set_position(new Box2D.b2Vec2(pos.x, pos.y));
-            this.carBody = world.CreateBody(bd);
-            this.carBody.CreateFixture(chassisShape, 2);
+        var circleShape = new Box2D.b2CircleShape();
+        circleShape.set_m_radius(0.6);
 
-            var fd = new Box2D.b2FixtureDef();
-            fd.set_shape(circleShape);
-            fd.set_density(1.0);
-            fd.set_friction(0.99);
+        var bd = new Box2D.b2BodyDef();
+        // bd.set_type(b2_dynamicBody);
+        bd.set_type(Module.b2_dynamicBody);
+        bd.set_position(new Box2D.b2Vec2(pos.x, pos.y));
+        this.carBody = world.CreateBody(bd);
+        this.carBody.CreateFixture(chassisShape, 2);
 
-            bd.set_position(new Box2D.b2Vec2(pos.x - 1.5, pos.y - 0.5));
-            var wheelBody1 = world.CreateBody(bd);
-            wheelBody1.CreateFixture(fd);
+        var fd = new Box2D.b2FixtureDef();
+        fd.set_shape(circleShape);
+        fd.set_density(1.0);
+        fd.set_friction(0.99);
 
-            bd.set_position(new Box2D.b2Vec2(pos.x + 1.5, pos.y - 0.5));
-            var wheelBody2 = world.CreateBody(bd);
-            wheelBody2.CreateFixture(fd);
+        bd.set_position(new Box2D.b2Vec2(pos.x - 1.5, pos.y - 0.5));
+        var wheelBody1 = world.CreateBody(bd);
+        wheelBody1.CreateFixture(fd);
 
-            var m_hz = 4.0;
-            var m_zeta = 0.5;
+        bd.set_position(new Box2D.b2Vec2(pos.x + 1.5, pos.y - 0.5));
+        var wheelBody2 = world.CreateBody(bd);
+        wheelBody2.CreateFixture(fd);
 
-            var jd = new Box2D.b2WheelJointDef();
-            var axis = new Box2D.b2Vec2(0.0, 1.0);
+        var m_hz = 4.0;
+        var m_zeta = 0.5;
 
-            jd.Initialize(this.carBody, wheelBody1, wheelBody1.GetPosition(), axis);
-            jd.set_motorSpeed(0.0);
-            jd.set_maxMotorTorque(45.0);
-            jd.set_enableMotor(true);
-            jd.set_frequencyHz(m_hz);
-            jd.set_dampingRatio(m_zeta);
-            this.rearWheelJoint = Box2D.castObject(world.CreateJoint(jd), Box2D.b2WheelJoint);
+        var jd = new Box2D.b2WheelJointDef();
+        var axis = new Box2D.b2Vec2(0.0, 1.0);
 
-            jd.Initialize(this.carBody, wheelBody2, wheelBody2.GetPosition(), axis);
-            jd.set_motorSpeed(0.0);
-            jd.set_maxMotorTorque(45.0);
-            jd.set_enableMotor(true);
-            jd.set_frequencyHz(m_hz);
-            jd.set_dampingRatio(m_zeta);
-            this.wheelJoint2 = Box2D.castObject(world.CreateJoint(jd), Box2D.b2WheelJoint);
-        
+        jd.Initialize(this.carBody, wheelBody1, wheelBody1.GetPosition(), axis);
+        jd.set_motorSpeed(0.0);
+        jd.set_maxMotorTorque(45.0);
+        jd.set_enableMotor(true);
+        jd.set_frequencyHz(m_hz);
+        jd.set_dampingRatio(m_zeta);
+        this.rearWheelJoint = Box2D.castObject(world.CreateJoint(jd), Box2D.b2WheelJoint);
+
+        jd.Initialize(this.carBody, wheelBody2, wheelBody2.GetPosition(), axis);
+        jd.set_motorSpeed(0.0);
+        jd.set_maxMotorTorque(45.0);
+        jd.set_enableMotor(true);
+        jd.set_frequencyHz(m_hz);
+        jd.set_dampingRatio(m_zeta);
+        this.wheelJoint2 = Box2D.castObject(world.CreateJoint(jd), Box2D.b2WheelJoint);
+
 
 
         bd = new Box2D.b2BodyDef();
@@ -105,12 +108,41 @@ export class Player {
 
 
     }
+    fire() {
+        const T = Date.now();
+        const DT = T - this.lastFire;
+        if (DT < 100) {
+            return;
+        }
+        this.lastFire = T;
+
+        const pos = this.cannonBody.GetWorldPoint(new Box2D.b2Vec2(-1.5, 0));
+        const angle = this.cannonBody.GetWorldVector(new Box2D.b2Vec2(-1, 0));
+        console.log(angle);
+        var circleShape = new Box2D.b2CircleShape();
+        circleShape.set_m_radius(0.2);
+
+        var bd = new Box2D.b2BodyDef();
+        bd.bullet = true;
+        
+        bd.set_position(new Box2D.b2Vec2(pos.x, pos.y));
+        bd.set_type(Box2D.b2_dynamicBody);
+
+        var fd = new Box2D.b2FixtureDef();
+        fd.set_shape(circleShape);
+        fd.set_density(5);
+        fd.set_friction(0.7);
+
+        const body = this.world.CreateBody(bd);
+        body.CreateFixture(fd);
+        body.ApplyForce(new Box2D.b2Vec2(angle.x*500, angle.y*500), new Box2D.b2Vec2(0, 0), true);
+    }
 
     updateMotorSpeed(motorSpeed) {
         this.rearWheelJoint.SetMotorSpeed(motorSpeed);
         this.wheelJoint2.SetMotorSpeed(motorSpeed);
     }
-    
+
     step() {
         this.updateMotorSpeed(-this.motion * 20);
         // console.log(this.cannonJoint);
