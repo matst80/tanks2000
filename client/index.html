@@ -13,8 +13,7 @@
     }
 </style>
     <script type="text/javascript" src="libs/Box2D_v2.3.1_min.wasm.js"></script>
-    <script type="text/javascript" src="libs/debugdraw.js"></script>
-    <script type="text/javascript" src="game.js"></script>
+    <script type="module" src="game2.js"></script>
 
     <script type="text/javascript">
         var context, canvas;
@@ -34,17 +33,16 @@
             console.log('loaded');
             canvas = document.getElementById('canvas');
             context = canvas.getContext("2d");
-            startGame(context);
+
+            const g2 = new Game2(canvas, context);
+            g2.setup();
         };
     </script>
 
 </head>
 
 <body>
-
-
     <canvas id="canvas" width="1920" height="1080" tabindex='1'></canvas>
-
 </body>
 
 </html>
