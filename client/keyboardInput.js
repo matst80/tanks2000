@@ -27,12 +27,11 @@ export class KeyboardInput extends Input {
     }
 
     setup(element, document) {
-        console.log('setup events', element)
-
+        
         document.addEventListener('keydown', (e) => {
             this.buttonsDown[e.keyCode] = true;
 
-            console.log('key down', e.keyCode)
+//            console.log('key down', e.keyCode)
 
             e.cancelBubble = true;
             e.stopPropagation();

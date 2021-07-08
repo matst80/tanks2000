@@ -1,6 +1,8 @@
 import { KeyboardInput, KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT, KEY_W, KEY_UP, KEY_DOWN, KEY_S } from './keyboardInput.js';
 import { Player } from './player.js';
+import { ParticleSystem } from './particleSystem.js';
 import { DebugRender } from './debugRender.js';
+import { LevelGenerator } from './levels.js';
 
 const PTM = 32;
 
@@ -13,6 +15,8 @@ export class Game2 {
     size;
     keyboardInput1;
     keyboardInput2;
+    particleSystem;
+    levelGenerator;
     stepComponents = [];
     killList;
 
@@ -20,6 +24,7 @@ export class Game2 {
         this.canvas = canvas;
         this.context = context;
         this.size = [canvas.width, canvas.height];
+        this.levelGenerator = new LevelGenerator();
     }
     getContactListener() {
         // const w = this.world;
@@ -33,6 +38,8 @@ export class Game2 {
 
             if (bodyA.IsBullet()) {
                 // w.DestroyBody(bodyA);
+                console.log(contact.GetFixtureA().GetUserData());
+                
                 this.killList.add(bodyA);
             }
             if (bodyB.IsBullet()) {
@@ -68,22 +75,24 @@ export class Game2 {
 
         var gravity = new Box2D.b2Vec2(0, -10);
         this.world = new Box2D.b2World(gravity, true);
+        this.particleSystem = new ParticleSystem(this.world);
         this.world.SetContactListener(this.getContactListener())
         this.renderer.setup(this.context, this.world);
 
         this.createGround();
 
-        this.player1 = new Player(this.world, { x: 15, y: 20 });
-        this.player2 = new Player(this.world, { x: 35, y: 20 });
+        const player1 = new Player(this.world, this.particleSystem, { x: 15, y: 20 });
+        const player2 = new Player(this.world, this.particleSystem, { x: 35, y: 20 });
 
-        this.keyboardInput1 = new KeyboardInput(this.player1, KEY_A, KEY_D, KEY_W, KEY_S);
-        this.keyboardInput2 = new KeyboardInput(this.player2, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN);
-        this.keyboardInput1.setup(this.canvas, window.document);
-        this.keyboardInput2.setup(this.canvas, window.document);
-        this.stepComponents.push(this.keyboardInput1);
-        this.stepComponents.push(this.keyboardInput2);
-        this.stepComponents.push(this.player1);
-        this.stepComponents.push(this.player2);
+        const keyboardInput1 = new KeyboardInput(player1, KEY_A, KEY_D, KEY_W, KEY_S);
+        const keyboardInput2 = new KeyboardInput(player2, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN);
+        keyboardInput1.setup(this.canvas, window.document);
+        keyboardInput2.setup(this.canvas, window.document);
+        this.stepComponents.push(keyboardInput1);
+        this.stepComponents.push(keyboardInput2);
+        this.stepComponents.push(player1);
+        this.stepComponents.push(player2);
+        this.stepComponents.push(this.particleSystem);
         this.step();
     }
 
@@ -98,6 +107,8 @@ export class Game2 {
         fd.set_density(1.0);
         fd.set_friction(1.0);
 
+
+
         const w = 60;
         const steps = 30;
         const step = w / steps;
@@ -108,21 +119,25 @@ export class Game2 {
             shape0.Set(new Box2D.b2Vec2(step * (i - 1), currentH), new Box2D.b2Vec2(step * (i), currentH + yStep));
             currentH += yStep;
             fd.set_shape(shape0);
+            fd.filter.categoryBits = 2;
+            fd.filter.maskBits = 0xFFFF;
             groundBody.CreateFixture(fd);
         }
 
         shape0.Set(new Box2D.b2Vec2(1.0, 25.0), new Box2D.b2Vec2(1.0, 0.0));
         fd.set_shape(shape0);
+        fd.filter.categoryBits = 2;
+        fd.filter.maskBits = 0xFFFF;
         groundBody.CreateFixture(fd);
 
         shape0.Set(new Box2D.b2Vec2(w, 25.0), new Box2D.b2Vec2(w, 0.0));
         fd.set_shape(shape0);
+        fd.filter.categoryBits = 2;
+        fd.filter.maskBits = 0xFFFF;
         groundBody.CreateFixture(fd);
 
         groundBody.SetAwake(1);
         groundBody.SetActive(1);
-        // groundBody.set_density(2.0);
-        // groundBody.set_friction(0.9);
 
         for (var i = 0; i < 5; ++i) {
             var shape = new Box2D.b2CircleShape();
@@ -132,10 +147,10 @@ export class Game2 {
             var bd = new Box2D.b2BodyDef();
             // bd.set_type(b2_dynamicBody);
             bd.set_type(Box2D.b2_dynamicBody);
-            bd.set_position(new Box2D.b2Vec2(5.9 + 0.6 * i, 12.4 + Math.random() * 13.0));
+            bd.set_position(new Box2D.b2Vec2(5.9 + 12 * i, 12.4 + Math.random() * 13.0));
 
             var body = this.world.CreateBody(bd);
-            body.CreateFixture(shape, r * 10.0);
+            body.CreateFixture(shape, 1);
         }
 
     }
@@ -146,10 +161,9 @@ export class Game2 {
         this.world.Step(1.0 / 60.0, 10, 5);
 
         this.killList.forEach(k => {
-            console.log('kill', k)
-            this.world.DestroyBody(k)
-        })
-        this.killList.clear();
+            this.world.DestroyBody(k);
+        });
+        this.killList.clear()
 
         this.context.save();
         this.context.fillStyle = `#000`;

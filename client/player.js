@@ -22,13 +22,14 @@ export class Player {
     cannonMotion;
     world;
     lastFire;
+    particleSystem;
 
-    constructor(world, pos) {
+    constructor(world, particleSystem, pos) {
         this.world = world;
         this.motion = 0;
         this.cannonMotion = 0;
         this.lastFire = 0;
-
+        this.particleSystem = particleSystem;
 
         var carVerts = [
             new Box2D.b2Vec2(-1.5, -0.5),
@@ -65,29 +66,27 @@ export class Player {
         var m_hz = 4.0;
         var m_zeta = 0.5;
 
-        var jd = new Box2D.b2WheelJointDef();
-        var axis = new Box2D.b2Vec2(0.0, 1.0);
+        const createJoin = (body)=> {
+            var jd = new Box2D.b2WheelJointDef();
+            var axis = new Box2D.b2Vec2(0.0, 1.0);
 
-        jd.Initialize(this.carBody, wheelBody1, wheelBody1.GetPosition(), axis);
-        jd.set_motorSpeed(0.0);
-        jd.set_maxMotorTorque(45.0);
-        jd.set_enableMotor(true);
-        jd.set_frequencyHz(m_hz);
-        jd.set_dampingRatio(m_zeta);
-        this.rearWheelJoint = Box2D.castObject(world.CreateJoint(jd), Box2D.b2WheelJoint);
+            jd.Initialize(this.carBody, body, body.GetPosition(), axis);
+            jd.set_motorSpeed(0.0);
+            jd.set_maxMotorTorque(45.0);
+            jd.set_enableMotor(true);
+            jd.set_frequencyHz(m_hz);
+            jd.set_dampingRatio(m_zeta);
+            return jd;
+        }
 
-        jd.Initialize(this.carBody, wheelBody2, wheelBody2.GetPosition(), axis);
-        jd.set_motorSpeed(0.0);
-        jd.set_maxMotorTorque(45.0);
-        jd.set_enableMotor(true);
-        jd.set_frequencyHz(m_hz);
-        jd.set_dampingRatio(m_zeta);
-        this.wheelJoint2 = Box2D.castObject(world.CreateJoint(jd), Box2D.b2WheelJoint);
+        
+        this.rearWheelJoint = Box2D.castObject(world.CreateJoint(createJoin(wheelBody1)), Box2D.b2WheelJoint);
 
+        this.wheelJoint2 = Box2D.castObject(world.CreateJoint(createJoin(wheelBody2)), Box2D.b2WheelJoint);
 
 
         bd = new Box2D.b2BodyDef();
-        bd.set_position(new Box2D.b2Vec2(pos.x + 0.0, pos.y + 1.0));
+        bd.set_position(new Box2D.b2Vec2(pos.x - 0.7, pos.y + 1.0));
         // bd.set_type(b2_dynamicBody);
         bd.set_type(Box2D.b2_dynamicBody);
         this.cannonBody = world.CreateBody(bd);
@@ -98,12 +97,12 @@ export class Player {
         this.cannonBody.CreateFixture(box, 1);
 
         this.cannonJoint = new Box2D.b2RevoluteJointDef();
-        this.cannonJoint.Initialize(this.carBody, this.cannonBody, new Box2D.b2Vec2(pos.x + 0.5, pos.y + 1.0));
+        this.cannonJoint.Initialize(this.carBody, this.cannonBody, new Box2D.b2Vec2(pos.x, pos.y + 1.0));
         this.cannonJoint.set_lowerAngle(-170 * DEGTORAD);
         this.cannonJoint.set_upperAngle(10 * DEGTORAD);
         this.cannonJoint.set_enableMotor(true);
-        this.cannonJoint.set_maxMotorTorque(10);
-        this.cannonJoint.set_enableLimit(true);
+        this.cannonJoint.set_maxMotorTorque(70);
+        //this.cannonJoint.set_enableLimit(true);
         world.CreateJoint(this.cannonJoint);
 
 
@@ -118,7 +117,7 @@ export class Player {
 
         const pos = this.cannonBody.GetWorldPoint(new Box2D.b2Vec2(-1.5, 0));
         const angle = this.cannonBody.GetWorldVector(new Box2D.b2Vec2(-1, 0));
-        console.log(angle);
+        
         var circleShape = new Box2D.b2CircleShape();
         circleShape.set_m_radius(0.2);
 
@@ -136,6 +135,33 @@ export class Player {
         const body = this.world.CreateBody(bd);
         body.CreateFixture(fd);
         body.ApplyForce(new Box2D.b2Vec2(angle.x*500, angle.y*500), new Box2D.b2Vec2(0, 0), true);
+
+
+        // const force = 200;
+        
+        // var circleShape2 = new Box2D.b2CircleShape();
+        // circleShape2.set_m_radius(0.1);
+
+        // var bd2 = new Box2D.b2BodyDef();
+        // // bd2.bullet = true;
+        
+        // bd2.set_position(new Box2D.b2Vec2(pos.x - 1.0 + Math.random() * 2.0, pos.y - 1.0 + Math.random() * 2.0));
+        // bd2.set_type(Box2D.b2_dynamicBody);
+
+        // var fd2 = new Box2D.b2FixtureDef();
+        // fd2.set_shape(circleShape2);
+        // fd2.set_density(15);
+        // fd2.set_friction(0.2);
+        // fd2.filter.categoryBits = 1;
+        // fd2.filter.maskBits = 2 | 1; // 0xFFFF & ~2;
+        // fd2.set_userData(42);
+        
+        
+        // const body2 = this.world.CreateBody(bd2);
+        // body2.CreateFixture(fd2);
+        // body2.ApplyForce(new Box2D.b2Vec2(angle.x*force - 100.0 + Math.random() * 200.0, angle.y*force - 100.0 + Math.random() * 200.0), new Box2D.b2Vec2(-1.0 + Math.random() * 2.0, -1.0 + Math.random() * 2.0), true);
+
+        this.particleSystem.emit(pos, angle);
     }
 
     updateMotorSpeed(motorSpeed) {
@@ -146,8 +172,8 @@ export class Player {
     step() {
         this.updateMotorSpeed(-this.motion * 20);
         // console.log(this.cannonJoint);
-        //this.cannonJoint.set_motorSpeed(this.cannonMotion*40);
-        this.cannonBody.ApplyAngularImpulse(this.cannonMotion, true);
+        //this.cannonJoint.set_motorSpeed(this.cannonMotion*400);
+        this.cannonBody.ApplyAngularImpulse(this.cannonMotion*5, true);
     }
 
 }
