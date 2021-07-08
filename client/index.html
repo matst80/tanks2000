@@ -2,11 +2,22 @@
 
 <head>
     <title>Tanks 2000</title>
-
+<style>
+    #canvas {
+        width: 100%;
+        height: 100%;
+    }
+    body, * {
+        margin:0;
+        padding:0;
+    }
+</style>
     <script type="text/javascript" src="libs/Box2D_v2.3.1_min.wasm.js"></script>
+    <script type="text/javascript" src="libs/debugdraw.js"></script>
     <script type="text/javascript" src="game.js"></script>
-    
+
     <script type="text/javascript">
+        var context, canvas;
         var Box2D;
         if (!Box2D) Box2D = (typeof Box2D !== 'undefined' ? Box2D : null) || Module;
         Box2D().then(function (r) {
@@ -21,7 +32,9 @@
 
         const afterDocumentLoaded = function () {
             console.log('loaded');
-            startGame(document.getElementById('canvas'));
+            canvas = document.getElementById('canvas');
+            context = canvas.getContext("2d");
+            startGame(context);
         };
     </script>
 
@@ -30,7 +43,7 @@
 <body>
 
 
-    <canvas id="canvas" width="640" height="480" tabindex='1'></canvas>
+    <canvas id="canvas" width="1920" height="1080" tabindex='1'></canvas>
 
 </body>
 
