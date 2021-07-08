@@ -4,6 +4,7 @@
     <title>Tanks 2000</title>
 
     <script type="text/javascript" src="libs/Box2D_v2.3.1_min.wasm.js"></script>
+    <script type="text/javascript" src="game.js"></script>
     
     <script type="text/javascript">
         var Box2D;
@@ -20,6 +21,7 @@
 
         const afterDocumentLoaded = function () {
             console.log('loaded');
+            startGame(document.getElementById('canvas'));
         };
     </script>
 
