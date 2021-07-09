@@ -170,7 +170,6 @@ export class Player {
     }
 
     update(data) {
-        console.log(data);
         this.motion = data.metrics.m;
         this.cannonMotion = data.metrics.c;
     }
