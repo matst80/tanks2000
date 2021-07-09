@@ -3,6 +3,7 @@ import { Player } from './player.js';
 import { ParticleSystem } from './particleSystem.js';
 import { DebugRender } from './debugRender.js';
 import { LevelGenerator } from './levels.js';
+import { Network } from './network.js';
 
 const PTM = 32;
 
@@ -10,14 +11,14 @@ const PTM = 32;
 export class Game2 {
     canvas;
     context;
-    player1;
-    player2;
+    player;
     size;
     keyboardInput1;
     keyboardInput2;
     particleSystem;
     levelGenerator;
     stepComponents = [];
+    network;
     killList;
 
     constructor(canvas, context) {
@@ -25,6 +26,7 @@ export class Game2 {
         this.context = context;
         this.size = [canvas.width, canvas.height];
         this.levelGenerator = new LevelGenerator();
+        this.network = new Network('localhost:8080',()=>this.setup());
     }
     getContactListener() {
         // const w = this.world;
@@ -81,7 +83,7 @@ export class Game2 {
 
         this.createGround();
 
-        const player1 = new Player(this.world, this.particleSystem, { x: 15, y: 20 });
+        const player1 = this.player = new Player(this.world, this.particleSystem, { x: 15, y: 20 });
         const player2 = new Player(this.world, this.particleSystem, { x: 35, y: 20 });
 
         const keyboardInput1 = new KeyboardInput(player1, KEY_A, KEY_D, KEY_W, KEY_S);
@@ -173,6 +175,7 @@ export class Game2 {
         this.context.scale(1, -1);
         this.context.scale(PTM, PTM);
 
+        this.network.sendMetrics(this.player.getMetrics())
 
         this.renderer.render()
 
