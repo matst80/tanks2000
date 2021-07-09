@@ -169,8 +169,18 @@ export class Player {
         this.wheelJoint2.SetMotorSpeed(motorSpeed);
     }
 
+    update(data) {
+        console.log(data);
+        this.motion = data.metrics.m;
+        this.cannonMotion = data.metrics.c;
+    }
+
+    getJson(v) {
+        return {x:v.x,y:v.y};
+    }
+
     getMetrics() {
-        return { pos: this.carBody.GetPosition(), m: this.motion, c: this.cannonMotion };
+        return { pos: this.getJson(this.carBody.GetPosition()), m: this.motion, c: this.cannonMotion };
     }
 
     step() {

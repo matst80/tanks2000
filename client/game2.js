@@ -17,6 +17,7 @@ export class Game2 {
     keyboardInput2;
     particleSystem;
     levelGenerator;
+    networkPlayers = {};
     stepComponents = [];
     network;
     killList;
@@ -26,14 +27,14 @@ export class Game2 {
         this.context = context;
         this.size = [canvas.width, canvas.height];
         this.levelGenerator = new LevelGenerator();
-        this.network = new Network('localhost:8080',()=>this.setup());
+        this.network = new Network('localhost:8080', () => this.setup(), Math.random() * 100000);
     }
     getContactListener() {
         // const w = this.world;
-        
+
         var contactListener = new Box2D.JSContactListener();
 
-        contactListener.BeginContact =  (contact) => {
+        contactListener.BeginContact = (contact) => {
             contact = Box2D.wrapPointer(contact, Box2D.b2Contact);
             const bodyA = contact.GetFixtureA().GetBody();
             const bodyB = contact.GetFixtureB().GetBody();
@@ -41,7 +42,7 @@ export class Game2 {
             if (bodyA.IsBullet()) {
                 // w.DestroyBody(bodyA);
                 console.log(contact.GetFixtureA().GetUserData());
-                
+
                 this.killList.add(bodyA);
             }
             if (bodyB.IsBullet()) {
@@ -51,12 +52,12 @@ export class Game2 {
             //[contact logic here]
         }
 
-        contactListener.EndContact = (contact) =>{
+        contactListener.EndContact = (contact) => {
             contact = Box2D.wrapPointer(contact, Box2D.b2Contact);
             //[contact logic here]
         }
 
-        contactListener.PreSolve =  (contact, oldManifold)=> {
+        contactListener.PreSolve = (contact, oldManifold) => {
             contact = Box2D.wrapPointer(contact, Box2D.b2Contact);
             oldManifold = Box2D.wrapPointer(oldManifold, Box2D.b2Manifold);
             //[contact logic here]
@@ -159,6 +160,23 @@ export class Game2 {
 
     step() {
         this.stepComponents.forEach(s => s.step());
+
+        const events = this.network.getEvents();
+        events.forEach(m => {
+            if (m.playerConnected) {
+                console.log(m);
+                const other = new Player(this.world, this.particleSystem, m.metrics.pos);
+                this.networkPlayers[m.playerConnected] = other;
+                this.stepComponents.push(other);
+            }
+            else {
+                const p = this.networkPlayers[m.uid];
+                if (p) {
+                    p.update(m);
+                }
+            }
+        });
+
 
         this.world.Step(1.0 / 60.0, 10, 5);
 
