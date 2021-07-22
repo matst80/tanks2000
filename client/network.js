@@ -8,6 +8,7 @@ export class Network {
 
         // Connection opened
         socket.addEventListener('open', function (event) {
+            console.log('connected');
             onConnection();
         });
 

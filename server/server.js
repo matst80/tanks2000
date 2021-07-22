@@ -13,6 +13,16 @@ wss.on('connection', function connection(ws) {
         }
     });
 
+    ws.on('close', () => {
+        console.log('ass');
+        wss.clients.forEach(function each(c) {
+            if (c !== ws && ws.lastMetric) {
+                const msg = JSON.parse(ws.lastMetric);
+                c.send(JSON.stringify({ playerDisconnected: msg.uid }));
+            }
+        });
+    });
+
     ws.on('message', (message) => {
         ws.lastMetric = message;
         if (!ws.hasMoved) {

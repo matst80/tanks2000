@@ -88,7 +88,6 @@ function car(xx, yy, width, height, wheelSize) {
         // // angleBMin: 0.5,
         // // angleBMax: -0.5,
         // angularStiffness: 0.6,
-
     });
 
     Composite.addBody(car, body);
@@ -99,15 +98,13 @@ function car(xx, yy, width, height, wheelSize) {
     Composite.addConstraint(car, axelA);
     Composite.addConstraint(car, axelB);
 
-
-
     return { car, wheelA, wheelB, cannon, body };
 };
 
 export class Player {
-    carBody;
-    rearWheelJoint;
-    wheelJoint2;
+    body;
+    wheelA;
+    wheelB;
     motion;
     cannonMotion;
     world;
@@ -127,10 +124,11 @@ export class Player {
         this.wheelB = body.wheelB;
         this.cannon = body.cannon;
         this.body = body.body;
+        this.car = body.car
         console.log(body);
         Composite.add(world, body.car);
-
     }
+
     fire() {
         const T = Date.now();
         const DT = T - this.lastFire;
@@ -147,13 +145,10 @@ export class Player {
             y: Math.sin(angle)
         };
 
-        console.log({axes, angle,force, pos});
-
-        
-
+        // console.log({axes, angle,force, pos});
 
         const bullet = Bodies.circle(pos.x - axes[0].x * 35.0, pos.y - axes[0].y * 35.0, 5 + Math.random() * 10, {});
-        Body.applyForce(bullet, bullet.position, { x: -axes[0].x / 100.0, y: -axes[0].y / 100.0 });
+        Body.applyForce(bullet, bullet.position, { x: -axes[0].x / 200.0, y: -axes[0].y / 200.0 });
         Composite.addBody(this.world, bullet);
 
         //this.particleSystem.emit(pos, angle);
@@ -171,8 +166,27 @@ export class Player {
         if (this.cannon.angle > compositeAngle + 0.8) Body.setAngle(this.cannon, compositeAngle + 0.8);
     }
 
-    update(data) {
+    remove() {
+        // this.body.remove();
+        Composite.remove(this.world, this.car);
+    }
 
+    update(data) {
+        const { a, c, pos, m, ca } = data.metrics;
+        
+        if (this.cannon) {
+            this.cannonMotion = c;
+            this.motion = m;
+
+            Body.setAngle(this.cannon, ca);
+            Body.setAngularVelocity(this.cannon, 0);
+
+            Body.setPosition(this.body, pos);            
+            Body.setVelocity(this.body, {x: 0, y: 0});
+
+            Body.setAngle(this.body, a);
+            Body.setAngularVelocity(this.body, 0);
+        }
     }
 
     getJson(v) {
@@ -180,8 +194,13 @@ export class Player {
     }
 
     getMetrics() {
-        return {};
-        //return { pos: this.getJson(this.carBody.GetPosition()), m: this.motion, c: this.cannonMotion };
+        return {
+            pos: this.body.position,
+            a: this.body.angle,
+            m: this.motion,
+            c: this.cannonMotion,
+            ca: this.cannon.angle
+        }
     }
 
     step() {
@@ -190,8 +209,6 @@ export class Player {
         this.updateMotorSpeed(this.currentMotion / 5.0);
         // console.log(this.cannonJoint);
         //this.cannonJoint.set_motorSpeed(this.cannonMotion*400);
-
-        
     }
 
 }
