@@ -33,7 +33,7 @@ class Game {
     constructor() {
 
         this.levelGenerator = new LevelGenerator();
-        this.network = new Network('localhost:8080', () => this.setup(), Math.floor(Math.random() * 100000));
+        this.network = new Network('tanks.knatofs.se:8080', () => this.setup(), Math.floor(Math.random() * 100000));
 
         // create an engine
         const engine = this.engine = Engine.create();
