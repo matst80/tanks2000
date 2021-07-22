@@ -1,16 +1,27 @@
-export class LevelGenerator {
-    generate(w = 60, steps = 120) {
-        const points = [];
-        const step = w / steps;
-        let currentH = 10;
-        for (var i = 0; i <= steps; i++) {
-            var yStep = (Math.random() * 2) - 1;
+const tw = 100;
+const th = 50;
 
-            points.push([step * i, currentH + yStep]);
+export class LevelGenerator {
+    generate(w = 1024, steps = 120) {
+        // let currentH = wh;
+        const points = [
+            {x:-tw, y:-th}, 
+            {x:tw, y:-th}, 
+            {x:tw, y:th}, 
+            {x:0, y:th*1.5}, 
+            {x:-tw, y:th},
+        ];
+
+        const step = w / steps;
+        
+        // for (var i = 0; i <= steps; i++) {
+        //     var yStep = (Math.random() * 20) - 10;
+
+        //     points.push({x:step * i, y:currentH + yStep});
             
-            currentH += yStep;
+        //     currentH += yStep;
             
-        }
+        // }
         return points;
     }
 }
