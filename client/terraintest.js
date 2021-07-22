@@ -121,12 +121,25 @@ async function updateOutputPreview(data) {
         ctx2.stroke()
     }
 
+    ctx2.strokeStyle = '#ff0'
+    for(var j=0; j<data.pois.length; j++) {
+        const l = data.pois[j]
+        ctx2.beginPath()
+        ctx2.moveTo(l[0]-5, l[1]-5)
+        ctx2.lineTo(l[0]+5, l[1]+5)
+        ctx2.moveTo(l[0]+5, l[1]-5)
+        ctx2.lineTo(l[0]-5, l[1]+5)
+        ctx2.stroke()
+    }
+
     if (data.brush) {
         ctx2.strokeStyle = '#f00'
         ctx2.beginPath()
         ctx2.ellipse( data.brush.x * data.previewScale, data.brush.y * data.previewScale, data.brush.size * data.previewScale, data.brush.size * data.previewScale, 0, 0, Math.PI * 2 )
         ctx2.stroke()
     }
+
+    document.getElementById('npoints').textContent = `${data.lines.length}`
 }
 
 async function regenerateRaw(data) {
@@ -170,6 +183,7 @@ function interpedge(t0, t1, v0, v1, threshold) {
 async function regenerateOutput(data) {
     // Classic demo stuff, but in 2d! https://en.wikipedia.org/wiki/Marching_squares
     const lines = []
+    const pois = []
     for(var j=0; j<data.height - 1; j++) {
         for(var i=0; i<data.width - 1; i++) {
             const x0 = i * data.previewScale
@@ -216,6 +230,8 @@ async function regenerateOutput(data) {
                         let tl = interpedge(val_tl, val_bl, y0, y1, data.threshold)
                         let tr = interpedge(val_tr, val_br, y0, y1, data.threshold)
                         lines.push([ x0, tl, x1, tr ])
+
+                        pois.push([ (x0 + x1) / 2, y0 - (y1-y0) / 3])
                         break;
                     }
                 case 4:
@@ -320,6 +336,7 @@ async function regenerateOutput(data) {
     }
 
     data.lines = lines
+    data.pois = pois
 }
 
 async function regenerate() {
