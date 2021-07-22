@@ -1,18 +1,108 @@
+const Body = Matter.Body,
+    Bodies = Matter.Bodies,
+    Composite = Matter.Composite,
+    Constraint = Matter.Constraint;
+
 const DEGTORAD = Math.PI / 180.0;
 
-function createPolygonShape(vertices) {
-    var shape = new Box2D.b2PolygonShape();
-    var buffer = Box2D._malloc(vertices.length * 8);
-    var offset = 0;
-    for (var i = 0; i < vertices.length; i++) {
-        Box2D.HEAPF32[buffer + offset >> 2] = vertices[i].get_x();
-        Box2D.HEAPF32[buffer + (offset + 4) >> 2] = vertices[i].get_y();
-        offset += 8;
-    }
-    var ptr_wrapped = Box2D.wrapPointer(buffer, Box2D.b2Vec2);
-    shape.Set(ptr_wrapped, vertices.length);
-    return shape;
-}
+function car(xx, yy, width, height, wheelSize) {
+
+    const group = Body.nextGroup(true),
+        wheels = Body.nextGroup(true),
+        wheelBase = 20,
+        wheelAOffset = -width * 0.5 + wheelBase,
+        wheelBOffset = width * 0.5 - wheelBase,
+        wheelYOffset = 0;
+
+    const car = Composite.create({ label: 'Car' }),
+        body = Bodies.rectangle(xx, yy, width, height, {
+            collisionFilter: {
+                group: group
+            },
+            chamfer: {
+                radius: height * 0.5
+            },
+            density: 0.2
+        });
+
+    const wheelA = Bodies.circle(xx + wheelAOffset, yy + wheelYOffset, wheelSize, {
+        collisionFilter: {
+            group: group
+        },
+        density: 0.2,
+        friction: 0.8
+    });
+
+    const wheelB = Bodies.circle(xx + wheelBOffset, yy + wheelYOffset, wheelSize, {
+        collisionFilter: {
+            group: group
+        },
+        density: 0.2,
+        friction: 0.8
+    });
+
+    const axelA = Constraint.create({
+        bodyB: body,
+        pointB: { x: wheelAOffset, y: wheelYOffset },
+        bodyA: wheelA,
+        stiffness: 1,
+        // damping: 0.2,
+        length: 0,
+        // angleA: -Math.PI,
+        // angleB: Math.PI,
+        // angularStiffness: 0.2,
+    });
+
+    const axelB = Constraint.create({
+        bodyB: body,
+        pointB: { x: wheelBOffset, y: wheelYOffset },
+        bodyA: wheelB,
+        stiffness: 1.0,
+        // damping: 0.2,
+        length: 0,
+        // angleA: 0,
+        // angleB: Math.PI,
+        // angularStiffness: 0.2,
+    });
+
+    const cannonWidth = width / 7;
+    const cannon = Bodies.rectangle(xx + (width / 2) - cannonWidth, yy + width / 2, cannonWidth, height * 7, {
+        collisionFilter: {
+            group: group
+        },
+        friction: 0.8,
+        density: 0.0002
+    });
+
+    // Tråd med exempel på angular joint: https://github.com/liabru/matter-js/pull/837
+    const cannonJoin = Constraint.create({
+        bodyB: body,
+        pointA: { x: 0, y: height * 3.5 },
+        bodyA: cannon,
+        stiffness: 1,
+        length: 1,
+        // angleA: -Math.PI,
+        // angleAMin: 0.1,
+        // angleAMax: -0.1,
+        // // angleB: 0.5,
+        // // angleBMin: 0.5,
+        // // angleBMax: -0.5,
+        // angularStiffness: 0.6,
+
+    });
+
+    Composite.addBody(car, body);
+    Composite.addBody(car, wheelA);
+    Composite.addBody(car, wheelB);
+    Composite.addBody(car, cannon);
+    Composite.addConstraint(car, cannonJoin);
+    Composite.addConstraint(car, axelA);
+    Composite.addConstraint(car, axelB);
+
+
+
+    return { car, wheelA, wheelB, cannon, body };
+};
 
 export class Player {
     carBody;
@@ -26,85 +116,19 @@ export class Player {
 
     constructor(world, particleSystem, pos) {
         this.world = world;
+        this.currentMotion = 0;
         this.motion = 0;
         this.cannonMotion = 0;
         this.lastFire = 0;
         this.particleSystem = particleSystem;
 
-        var carVerts = [
-            new Box2D.b2Vec2(-1.5, -0.5),
-            new Box2D.b2Vec2(1.5, -0.5),
-            new Box2D.b2Vec2(1.5, 0.5),
-            new Box2D.b2Vec2(1.2, 0.9),
-            new Box2D.b2Vec2(-1.2, 0.9),
-            new Box2D.b2Vec2(-1.5, 0.5)];
-        var chassisShape = new createPolygonShape(carVerts);
-
-        var circleShape = new Box2D.b2CircleShape();
-        circleShape.set_m_radius(0.6);
-
-        var bd = new Box2D.b2BodyDef();
-        // bd.set_type(b2_dynamicBody);
-        bd.set_type(Module.b2_dynamicBody);
-        bd.set_position(new Box2D.b2Vec2(pos.x, pos.y));
-        this.carBody = world.CreateBody(bd);
-        this.carBody.CreateFixture(chassisShape, 2);
-
-        var fd = new Box2D.b2FixtureDef();
-        fd.set_shape(circleShape);
-        fd.set_density(1.0);
-        fd.set_friction(0.99);
-
-        bd.set_position(new Box2D.b2Vec2(pos.x - 1.5, pos.y - 0.5));
-        var wheelBody1 = world.CreateBody(bd);
-        wheelBody1.CreateFixture(fd);
-
-        bd.set_position(new Box2D.b2Vec2(pos.x + 1.5, pos.y - 0.5));
-        var wheelBody2 = world.CreateBody(bd);
-        wheelBody2.CreateFixture(fd);
-
-        var m_hz = 4.0;
-        var m_zeta = 0.5;
-
-        const createJoin = (body) => {
-            var jd = new Box2D.b2WheelJointDef();
-            var axis = new Box2D.b2Vec2(0.0, 1.0);
-
-            jd.Initialize(this.carBody, body, body.GetPosition(), axis);
-            jd.set_motorSpeed(0.0);
-            jd.set_maxMotorTorque(45.0);
-            jd.set_enableMotor(true);
-            jd.set_frequencyHz(m_hz);
-            jd.set_dampingRatio(m_zeta);
-            return jd;
-        }
-
-
-        this.rearWheelJoint = Box2D.castObject(world.CreateJoint(createJoin(wheelBody1)), Box2D.b2WheelJoint);
-
-        this.wheelJoint2 = Box2D.castObject(world.CreateJoint(createJoin(wheelBody2)), Box2D.b2WheelJoint);
-
-
-        bd = new Box2D.b2BodyDef();
-        bd.set_position(new Box2D.b2Vec2(pos.x - 0.7, pos.y + 1.0));
-        // bd.set_type(b2_dynamicBody);
-        bd.set_type(Box2D.b2_dynamicBody);
-        this.cannonBody = world.CreateBody(bd);
-
-        var box = new Box2D.b2PolygonShape();
-
-        box.SetAsBox(1., 0.25);
-        this.cannonBody.CreateFixture(box, 1);
-
-        this.cannonJoint = new Box2D.b2RevoluteJointDef();
-        this.cannonJoint.Initialize(this.carBody, this.cannonBody, new Box2D.b2Vec2(pos.x, pos.y + 1.0));
-        this.cannonJoint.set_lowerAngle(-170 * DEGTORAD);
-        this.cannonJoint.set_upperAngle(10 * DEGTORAD);
-        this.cannonJoint.set_enableMotor(true);
-        this.cannonJoint.set_maxMotorTorque(70);
-        //this.cannonJoint.set_enableLimit(true);
-        world.CreateJoint(this.cannonJoint);
-
+        const body = car(pos.x, pos.y, 120, 10, 20);
+        this.wheelA = body.wheelA;
+        this.wheelB = body.wheelB;
+        this.cannon = body.cannon;
+        this.body = body.body;
+        console.log(body);
+        Composite.add(world, body.car);
 
     }
     fire() {
@@ -115,78 +139,59 @@ export class Player {
         }
         this.lastFire = T;
 
-        const pos = this.cannonBody.GetWorldPoint(new Box2D.b2Vec2(-1.5, 0));
-        const angle = this.cannonBody.GetWorldVector(new Box2D.b2Vec2(-1, 0));
+        const angle = this.cannon.angle;
+        const pos = this.cannon.position;
+        const axes = this.cannon.axes;
+        const force = {
+            x: Math.cos(angle),
+            y: Math.sin(angle)
+        };
 
-        var circleShape = new Box2D.b2CircleShape();
-        circleShape.set_m_radius(0.2);
+        console.log({axes, angle,force, pos});
 
-        var bd = new Box2D.b2BodyDef();
-        bd.bullet = true;
-
-        bd.set_position(new Box2D.b2Vec2(pos.x, pos.y));
-        bd.set_type(Box2D.b2_dynamicBody);
-
-        var fd = new Box2D.b2FixtureDef();
-        fd.set_shape(circleShape);
-        fd.set_density(5);
-        fd.set_friction(0.7);
-
-        const body = this.world.CreateBody(bd);
-        body.CreateFixture(fd);
-        body.ApplyForce(new Box2D.b2Vec2(angle.x * 500, angle.y * 500), new Box2D.b2Vec2(0, 0), true);
+        
 
 
-        // const force = 200;
+        const bullet = Bodies.circle(pos.x - axes[0].x * 35.0, pos.y - axes[0].y * 35.0, 5 + Math.random() * 10, {});
+        Body.applyForce(bullet, bullet.position, { x: -axes[0].x / 100.0, y: -axes[0].y / 100.0 });
+        Composite.addBody(this.world, bullet);
 
-        // var circleShape2 = new Box2D.b2CircleShape();
-        // circleShape2.set_m_radius(0.1);
-
-        // var bd2 = new Box2D.b2BodyDef();
-        // // bd2.bullet = true;
-
-        // bd2.set_position(new Box2D.b2Vec2(pos.x - 1.0 + Math.random() * 2.0, pos.y - 1.0 + Math.random() * 2.0));
-        // bd2.set_type(Box2D.b2_dynamicBody);
-
-        // var fd2 = new Box2D.b2FixtureDef();
-        // fd2.set_shape(circleShape2);
-        // fd2.set_density(15);
-        // fd2.set_friction(0.2);
-        // fd2.filter.categoryBits = 1;
-        // fd2.filter.maskBits = 2 | 1; // 0xFFFF & ~2;
-        // fd2.set_userData(42);
-
-
-        // const body2 = this.world.CreateBody(bd2);
-        // body2.CreateFixture(fd2);
-        // body2.ApplyForce(new Box2D.b2Vec2(angle.x*force - 100.0 + Math.random() * 200.0, angle.y*force - 100.0 + Math.random() * 200.0), new Box2D.b2Vec2(-1.0 + Math.random() * 2.0, -1.0 + Math.random() * 2.0), true);
-
-        this.particleSystem.emit(pos, angle);
+        //this.particleSystem.emit(pos, angle);
     }
 
     updateMotorSpeed(motorSpeed) {
-        this.rearWheelJoint.SetMotorSpeed(motorSpeed);
-        this.wheelJoint2.SetMotorSpeed(motorSpeed);
+        // console.log('rotera',motorSpeed);
+        Body.setAngularVelocity(this.wheelA, motorSpeed * 3.0);
+        Body.setAngularVelocity(this.wheelB, motorSpeed * 3.0);
+        Body.setAngularVelocity(this.cannon, this.cannonMotion / 5.0);
+
+        // fulhack
+        var compositeAngle = this.body.angle // + this.cannon.angle;
+        if (this.cannon.angle < compositeAngle - 0.8) Body.setAngle(this.cannon, compositeAngle - 0.8);
+        if (this.cannon.angle > compositeAngle + 0.8) Body.setAngle(this.cannon, compositeAngle + 0.8);
     }
 
     update(data) {
-        this.motion = data.metrics.m;
-        this.cannonMotion = data.metrics.c;
+
     }
 
     getJson(v) {
-        return {x:v.x,y:v.y};
+        return { x: v.x, y: v.y };
     }
 
     getMetrics() {
-        return { pos: this.getJson(this.carBody.GetPosition()), m: this.motion, c: this.cannonMotion };
+        return {};
+        //return { pos: this.getJson(this.carBody.GetPosition()), m: this.motion, c: this.cannonMotion };
     }
 
     step() {
-        this.updateMotorSpeed(-this.motion * 20);
+        this.currentMotion += (this.motion - this.currentMotion) * 0.1;
+
+        this.updateMotorSpeed(this.currentMotion / 5.0);
         // console.log(this.cannonJoint);
         //this.cannonJoint.set_motorSpeed(this.cannonMotion*400);
-        this.cannonBody.ApplyAngularImpulse(this.cannonMotion * 5, true);
+
+        
     }
 
 }

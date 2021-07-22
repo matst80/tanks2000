@@ -18,20 +18,21 @@ export class KeyboardInput extends Input {
     movementKeys;
     objectToMove;
 
-    constructor(objectToMove, key_left, key_right, key_turnLeft, key_turnRight) {
+    constructor(objectToMove, key_left, key_right, key_turnLeft, key_turnRight, key_fire) {
         super()
         this.objectToMove = objectToMove;
         this.movementKeys = [key_left, key_right];
         this.cannonKeys = [key_turnLeft, key_turnRight];
+        this.fireKey = key_fire;
         this.buttonsDown = {}
     }
 
-    setup(element, document) {
+    setup() {
         
         document.addEventListener('keydown', (e) => {
             this.buttonsDown[e.keyCode] = true;
 
-//            console.log('key down', e.keyCode)
+            console.log('key down', e.keyCode)
 
             e.cancelBubble = true;
             e.stopPropagation();
@@ -63,7 +64,7 @@ export class KeyboardInput extends Input {
         super.step()
 
         this.objectToMove.motion *= 0.97;
-        if (this.buttonsDown[KEY_SPACE]) {
+        if (this.buttonsDown[this.fireKey]) {
             this.objectToMove.fire();
         }
         if (this.buttonsDown[this.movementKeys[0]]) {

@@ -1,14 +1,21 @@
-import { KeyboardInput, KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT, KEY_W, KEY_UP, KEY_DOWN, KEY_S } from './keyboardInput.js';
+import { KeyboardInput, KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT, KEY_W, KEY_UP, KEY_DOWN, KEY_S, KEY_SPACE } from './keyboardInput.js';
 import { Player } from './player.js';
 import { ParticleSystem } from './particleSystem.js';
 import { DebugRender } from './debugRender.js';
 import { LevelGenerator } from './levels.js';
 import { Network } from './network.js';
 
+// module aliases
+const Engine = Matter.Engine,
+    Render = Matter.Render,
+    Events = Matter.Events,
+    Runner = Matter.Runner,
+    Bodies = Matter.Bodies,
+    Composite = Matter.Composite;
+
 const PTM = 32;
 
-
-export class Game2 {
+class Game {
     canvas;
     context;
     player;
@@ -22,12 +29,42 @@ export class Game2 {
     network;
     killList;
 
-    constructor(canvas, context) {
-        this.canvas = canvas;
-        this.context = context;
-        this.size = [canvas.width, canvas.height];
+    constructor() {
+        
         this.levelGenerator = new LevelGenerator();
         this.network = new Network('localhost:8080', () => this.setup(), Math.random() * 100000);
+
+        // create an engine
+        const engine = this.engine = Engine.create();
+        this.world = engine.world;
+
+        var boxA = Bodies.rectangle(400, 200, 60, 60);
+        var boxB = Bodies.rectangle(450, 50, 60, 60);
+        var ground = Bodies.rectangle(400, 610, 810, 60, { isStatic: true });
+      //Body.setAngle(ground, 1);
+
+        // add all of the bodies to the world
+        Composite.add(this.world, [boxA, boxB, ground]);
+
+        // create a renderer
+        var render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: {
+                width: 1024,
+                height: 768,
+                showAngleIndicator: true,
+                showCollisions: true
+            }
+        });
+
+        Render.run(render);
+
+        var runner = Runner.create();
+        Runner.run(runner, engine);
+            
+        Events.on(engine, 'beforeUpdate', e => { this.step(); });
+        
     }
     getContactListener() {
         // const w = this.world;
@@ -74,23 +111,19 @@ export class Game2 {
 
     setup() {
         this.killList = new Set();
-        this.renderer = new DebugRender();
+        
 
-        var gravity = new Box2D.b2Vec2(0, -10);
-        this.world = new Box2D.b2World(gravity, true);
         this.particleSystem = new ParticleSystem(this.world);
-        this.world.SetContactListener(this.getContactListener())
-        this.renderer.setup(this.context, this.world);
-
+        
         this.createGround();
 
-        const player1 = this.player = new Player(this.world, this.particleSystem, { x: 15, y: 20 });
-        const player2 = new Player(this.world, this.particleSystem, { x: 35, y: 20 });
+        const player1 = this.player = new Player(this.world, this.particleSystem, { x: 180, y: 20 });
+        const player2 = new Player(this.world, this.particleSystem, { x: 500, y: 20 });
 
-        const keyboardInput1 = new KeyboardInput(player1, KEY_A, KEY_D, KEY_W, KEY_S);
-        const keyboardInput2 = new KeyboardInput(player2, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN);
-        keyboardInput1.setup(this.canvas, window.document);
-        keyboardInput2.setup(this.canvas, window.document);
+        const keyboardInput1 = new KeyboardInput(player1, KEY_A, KEY_D, KEY_W, KEY_S, KEY_SPACE);
+        const keyboardInput2 = new KeyboardInput(player2, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_RIGHT);
+        keyboardInput1.setup();
+        keyboardInput2.setup();
         this.stepComponents.push(keyboardInput1);
         this.stepComponents.push(keyboardInput2);
         this.stepComponents.push(player1);
@@ -100,62 +133,31 @@ export class Game2 {
     }
 
     createGround() {
-        var bd_ground = new Box2D.b2BodyDef();
-        var groundBody = this.world.CreateBody(bd_ground);
+        const vertexSets = this.levelGenerator.generate(100,40);
+        var terrain = Bodies.fromVertices(512, 384, vertexSets, {
+            isStatic: true,
+            render: {   
+                fillStyle: '#060a19',
+                strokeStyle: '#060a19',
+                lineWidth: 3
+            }
+        }, true);
 
-        //ground edges
-        var shape0 = new Box2D.b2EdgeShape();
+        console.log(vertexSets);
 
-        var fd = new Box2D.b2FixtureDef();
-        fd.set_density(1.0);
-        fd.set_friction(1.0);
+        Composite.add(this.world, terrain);
 
-
-
-        const w = 60;
-        const steps = 30;
-        const step = w / steps;
-        let currentH = 10;
-        for (var i = 0; i <= steps; i++) {
-            var yStep = (Math.random() * 2) - 1;
-
-            shape0.Set(new Box2D.b2Vec2(step * (i - 1), currentH), new Box2D.b2Vec2(step * (i), currentH + yStep));
-            currentH += yStep;
-            fd.set_shape(shape0);
-            fd.filter.categoryBits = 2;
-            fd.filter.maskBits = 0xFFFF;
-            groundBody.CreateFixture(fd);
-        }
-
-        shape0.Set(new Box2D.b2Vec2(1.0, 25.0), new Box2D.b2Vec2(1.0, 0.0));
-        fd.set_shape(shape0);
-        fd.filter.categoryBits = 2;
-        fd.filter.maskBits = 0xFFFF;
-        groundBody.CreateFixture(fd);
-
-        shape0.Set(new Box2D.b2Vec2(w, 25.0), new Box2D.b2Vec2(w, 0.0));
-        fd.set_shape(shape0);
-        fd.filter.categoryBits = 2;
-        fd.filter.maskBits = 0xFFFF;
-        groundBody.CreateFixture(fd);
-
-        groundBody.SetAwake(1);
-        groundBody.SetActive(1);
-
-        for (var i = 0; i < 5; ++i) {
-            var shape = new Box2D.b2CircleShape();
-            const r = Math.random();
-            shape.set_m_radius(1 + r * 1.0);
-
-            var bd = new Box2D.b2BodyDef();
-            // bd.set_type(b2_dynamicBody);
-            bd.set_type(Box2D.b2_dynamicBody);
-            bd.set_position(new Box2D.b2Vec2(5.9 + 12 * i, 12.4 + Math.random() * 13.0));
-
-            var body = this.world.CreateBody(bd);
-            body.CreateFixture(shape, 1);
-        }
-
+        // var bodyOptions = {
+        //     frictionAir: 0, 
+        //     friction: 0.0001,
+        //     restitution: 0.6
+        // };
+        
+        // Composite.add(this.world, Composites.stack(80, 100, 20, 20, 10, 10, function(x, y) {
+        //     if (Query.point([terrain], { x: x, y: y }).length === 0) {
+        //         return Bodies.polygon(x, y, 5, 12, bodyOptions);
+        //     }
+        // }));
     }
 
     step() {
@@ -176,33 +178,7 @@ export class Game2 {
                 }
             }
         });
-
-
-        this.world.Step(1.0 / 60.0, 10, 5);
-
-        this.killList.forEach(k => {
-            this.world.DestroyBody(k);
-        });
-        this.killList.clear()
-
-        this.context.save();
-        this.context.fillStyle = `#000`;
-        this.context.fillRect(0, 0, ...this.size);
-
-        this.context.translate(0, this.canvas.height);
-        this.context.scale(1, -1);
-        this.context.scale(PTM, PTM);
-
-        this.network.sendMetrics(this.player.getMetrics())
-
-        this.renderer.render()
-
-        this.context.restore();
-
-        requestAnimationFrame(() => {
-            this.step();
-        });
     }
-}
+};
 
-window.Game2 = Game2;
+const game = new Game();
