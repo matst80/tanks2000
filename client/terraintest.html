@@ -2,17 +2,41 @@
 
 <head>
     <title>Tanks 2000 Terrain test</title>
-    <script type="text/javascript" src="libs/matter.min.js"></script>
+    <script type="text/javascript" src="libs/perlin.js"></script>
     <style>
-        body,
-        * {
-            margin: 0;
-            padding: 0;
+        p {
+            margin: 0 0 20px 0;
         }
-    </style>    
+    </style>
 </head>
 
 <body>
+    <h1>Grid based level generator</h1>
+    <p>
+        Size: <input id="width" value="100" size="4" /> x <input id="height" value="40" size="4" /> blocks, randomseed: <input id="seed" value="123456" size="8" /> <button id="generate">REGENERATE</button> <button id="randomize">RANDOMIZE</button>
+    </p>
+    <p></p>
+    <p>
+        Raw level data: (heatmap)<br/>
+        <canvas id="c1"></canvas>
+    </p>
+    <p>
+        Example rendering + vectors:<br/>
+        <canvas id="c2"></canvas><br/>
+        <span id="npoints">0</span> Points / Lines<br/>
+    </p>
+    <p>
+        Brush: <select id="brushpower">
+            <option value="-50">Destroys surface</option>
+            <option value="50">Generates surface</option>
+        </select><br/>
+        Radius: <input id="brushradius" value="5" size="4" /> units<br/>
+        Noise: <input id="brushnoise" value="1" size="4" /><br/>
+    </p>
+    <p>
+        JSON:<br/>
+        <textarea id="js" cols="100" rows="30"></textarea>
+    </p>
     <script type="module" src="terraintest.js"></script>
 </body>
 
