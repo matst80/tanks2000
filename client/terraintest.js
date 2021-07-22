@@ -112,14 +112,34 @@ async function updateOutputPreview(data) {
         }
     }
 
-    ctx2.strokeStyle = '#0f0'
     for(var j=0; j<data.lines.length; j++) {
         const l = data.lines[j]
+
+        ctx2.lineWidth = 1.0;
+        ctx2.strokeStyle = '#ccc'
+        if (l[4] === 1) {
+            // top layers, grass
+            ctx2.lineWidth = 3.0;
+            ctx2.strokeStyle = '#0f0'
+        }
+        if (l[4] === 2) {
+            // ceilings, mud?
+            ctx2.lineWidth = 3.0;
+            ctx2.strokeStyle = '#07f'
+        }
+        if (l[4] === 3) {
+            // side color, sloppy mud
+            ctx2.lineWidth = 3.0;
+            ctx2.strokeStyle = '#f70'
+        }
+
         ctx2.beginPath()
         ctx2.moveTo(l[0], l[1])
         ctx2.lineTo(l[2], l[3])
         ctx2.stroke()
     }
+
+    ctx2.lineWidth = 1.0;
 
     ctx2.strokeStyle = '#ff0'
     for(var j=0; j<data.pois.length; j++) {
@@ -165,8 +185,8 @@ async function regenerateRaw(data) {
 }
 
 function interpedge(t0, t1, v0, v1, threshold) {
-    var y0 = (t0 - threshold) / 128.0
-    var y1 = (t1 - threshold) / 128.0
+    var y0 = (t0 - threshold)
+    var y1 = (t1 - threshold)
 
     var slope = y1 - y0
     if (slope > -0.0001 && slope < 0.0001) {
@@ -213,7 +233,7 @@ async function regenerateOutput(data) {
                         // from bottom left
                         let tb = interpedge(val_bl, val_br, x0, x1, data.threshold)
                         let tl = interpedge(val_bl, val_tl, y1, y0, data.threshold)
-                        lines.push([ x0, tl, tb, y1 ])
+                        lines.push([ x0, tl, tb, y1, 1 ])
                         break;
                     }
                 case 2:
@@ -221,7 +241,7 @@ async function regenerateOutput(data) {
                         // from bottom right
                         let tb = interpedge(val_bl, val_br, x0, x1, data.threshold)
                         let tr = interpedge(val_br, val_tr, y1, y0, data.threshold)
-                        lines.push([ tb, y1, x1, tr ])
+                        lines.push([ tb, y1, x1, tr, 1 ])
                         break;
                     }
                 case 3:
@@ -229,7 +249,7 @@ async function regenerateOutput(data) {
                         // from bottom edge
                         let tl = interpedge(val_tl, val_bl, y0, y1, data.threshold)
                         let tr = interpedge(val_tr, val_br, y0, y1, data.threshold)
-                        lines.push([ x0, tl, x1, tr ])
+                        lines.push([ x0, tl, x1, tr, 1 ])
 
                         pois.push([ (x0 + x1) / 2, y0 - (y1-y0) / 3])
                         break;
@@ -239,7 +259,7 @@ async function regenerateOutput(data) {
                         // from top right
                         let tt = interpedge(val_tr, val_tl, x1, x0, data.threshold)
                         let tr = interpedge(val_tr, val_br, y0, y1, data.threshold)
-                        lines.push([ tt, y0, x1, tr ])
+                        lines.push([ tt, y0, x1, tr, 2 ])
                         break;
                     }
                 case 5:
@@ -247,10 +267,10 @@ async function regenerateOutput(data) {
                         // from top right and bottom left
                         let tt = interpedge(val_tr, val_tl, x1, x0, data.threshold)
                         let tr = interpedge(val_tr, val_br, y0, y1, data.threshold)
-                        lines.push([ tt, y0, x1, tr ])
+                        lines.push([ tt, y0, x1, tr, 2 ])
                         let tb = interpedge(val_bl, val_br, x0, x1, data.threshold)
                         let tl = interpedge(val_bl, val_tl, y1, y0, data.threshold)
-                        lines.push([ x0, tl, tb, y1 ])
+                        lines.push([ x0, tl, tb, y1, 1 ])
                         break;
                     }
                 case 6:
@@ -258,7 +278,7 @@ async function regenerateOutput(data) {
                         // from right edge
                         let tt = interpedge(val_tl, val_tr, x0, x1, data.threshold)
                         let tb = interpedge(val_bl, val_br, x0, x1, data.threshold)
-                        lines.push([ tt, y0, tb, y1 ])
+                        lines.push([ tt, y0, tb, y1, 3 ])
                         break;
                     }
                 case 7:
@@ -266,7 +286,7 @@ async function regenerateOutput(data) {
                         // to top left
                         let tt = interpedge(val_tr, val_tl, x1, x0, data.threshold)
                         let tl = interpedge(val_bl, val_tl, y1, y0, data.threshold)
-                        lines.push([ tt, y0, x0, tl ])
+                        lines.push([ tt, y0, x0, tl, 1 ])
                         break;
                     }
                 case 8:
@@ -274,7 +294,7 @@ async function regenerateOutput(data) {
                         // from top left
                         let tt = interpedge(val_tl, val_tr, x0, x1, data.threshold)
                         let tl = interpedge(val_tl, val_bl, y0, y1, data.threshold)
-                        lines.push([ tt, y0, x0, tl ])
+                        lines.push([ tt, y0, x0, tl, 2 ])
                         break;
                     }
                 case 9:
@@ -282,7 +302,7 @@ async function regenerateOutput(data) {
                         // from left edge
                         let tt = interpedge(val_tl, val_tr, x0, x1, data.threshold)
                         let tb = interpedge(val_bl, val_br, x0, x1, data.threshold)
-                        lines.push([ tt, y0, tb, y1 ])
+                        lines.push([ tt, y0, tb, y1, 3 ])
                         break;
                     }
                 case 10:
@@ -290,10 +310,10 @@ async function regenerateOutput(data) {
                         // from top left and bottom right
                         let tt = interpedge(val_tl, val_tr, x0, x1, data.threshold)
                         let tl = interpedge(val_tl, val_bl, y0, y1, data.threshold)
-                        lines.push([ tt, y0, x0, tl ])
+                        lines.push([ tt, y0, x0, tl, 2 ])
                         let tb = interpedge(val_bl, val_br, x0, x1, data.threshold)
                         let tr = interpedge(val_br, val_tr, y1, y0, data.threshold)
-                        lines.push([ tb, y1, x1, tr ])
+                        lines.push([ tb, y1, x1, tr, 1 ])
                         break;
                     }
                 case 11:
@@ -301,7 +321,7 @@ async function regenerateOutput(data) {
                         // to top right
                         let tt = interpedge(val_tl, val_tr, x0, x1, data.threshold)
                         let tr = interpedge(val_br, val_tr, y1, y0, data.threshold)
-                        lines.push([ tt, y0, x1, tr ])
+                        lines.push([ tt, y0, x1, tr, 1 ])
                         break;
                     }
                 case 12:
@@ -309,7 +329,7 @@ async function regenerateOutput(data) {
                         // from top edge
                         let tl = interpedge(val_tl, val_bl, y0, y1, data.threshold)
                         let tr = interpedge(val_tr, val_br, y0, y1, data.threshold)
-                        lines.push([ x0, tl, x1, tr ])
+                        lines.push([ x0, tl, x1, tr, 2 ])
                         break;
                     }
                 case 13:
@@ -317,7 +337,7 @@ async function regenerateOutput(data) {
                         // to bottom right
                         let tb = interpedge(val_bl, val_br, x0, x1, data.threshold)
                         let tr = interpedge(val_tr, val_br, y0, y1, data.threshold)
-                        lines.push([ tb, y1, x1, tr ])
+                        lines.push([ tb, y1, x1, tr, 2 ])
                         break;
                     }
                 case 14:
@@ -325,7 +345,7 @@ async function regenerateOutput(data) {
                         // to bottom left
                         let tb = interpedge(val_br, val_bl, x1, x0, data.threshold)
                         let tl = interpedge(val_tl, val_bl, y0, y1, data.threshold)
-                        lines.push([ tb, y1, x0, tl ])
+                        lines.push([ tb, y1, x0, tl, 2 ])
                         break;
                     }
                 case 15:
